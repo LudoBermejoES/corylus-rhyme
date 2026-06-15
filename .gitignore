@@ -1,0 +1,11 @@
+# Rust build output
+/target
+
+# Generated rhyme-FST build artifacts (regeneratable via build_rhyme.py + the
+# build_rhyme_fst Rust binary; published to GitHub Releases, not committed).
+/scripts/artifacts/
+# Downloaded CMU source dict (fetched + SHA-256-verified by build_rhyme.py).
+/scripts/raw/
+
+# Library crate: lockfile not tracked (matches rust-lemmatization)
+/Cargo.lock
