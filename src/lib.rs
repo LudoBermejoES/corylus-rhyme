@@ -21,9 +21,9 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-pub use english::{rhyme_tail, rhyme_tail_from_str};
+pub use english::{rhyme_tail, rhyme_tail_from_str, assonant_tail, assonant_tail_from_str};
 pub use error::RhymeError;
-pub use spanish::spanish_rhyme_key;
+pub use spanish::{spanish_rhyme_key, spanish_assonant_key};
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -78,6 +78,15 @@ pub(crate) struct Inner {
     pub state: RhymeState,
     /// The in-memory English map; None for Spanish (rule-based) or until Ready.
     pub loaded_map: Option<Arc<map::LoadedMap>>,
+}
+
+/// Both rhyme keys for a single token.
+/// `consonant` is None for open-vowel endings (no coda consonant).
+/// `assonant` is None only when no stressed vowel can be found.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct RhymeKeys {
+    pub consonant: Option<String>,
+    pub assonant: Option<String>,
 }
 
 /// True for languages whose rhyme keys are computed from rules with no data file.
@@ -174,6 +183,44 @@ impl RhymeEngine {
         let map_arc = inner.loaded_map.clone();
         drop(inner);
         map_arc.and_then(|m| m.resolve(surface))
+    }
+
+    /// Resolve both rhyme keys (consonant and assonant) for a single surface word.
+    pub fn resolve_both(&self, surface: &str) -> RhymeKeys {
+        let results = self.resolve_batch_both(&[surface.to_string()]);
+        results.into_iter().next().unwrap_or(RhymeKeys { consonant: None, assonant: None })
+    }
+
+    /// Resolve both keys for a batch of surface words in order.
+    pub fn resolve_batch_both(&self, tokens: &[String]) -> Vec<RhymeKeys> {
+        let inner = self.inner.lock().unwrap();
+        let lang = inner.config.lang.clone();
+        if is_rulebased(&lang) {
+            drop(inner);
+            return tokens
+                .iter()
+                .map(|t| RhymeKeys {
+                    consonant: spanish::spanish_rhyme_key(t),
+                    assonant: spanish::spanish_assonant_key(t),
+                })
+                .collect();
+        }
+        let map_arc = inner.loaded_map.clone();
+        drop(inner);
+        match map_arc {
+            Some(m) => tokens
+                .iter()
+                .map(|t| {
+                    let consonant = m.resolve(t);
+                    let assonant = consonant.as_deref().map(|cons_key| {
+                        let phonemes: Vec<&str> = cons_key.split_whitespace().collect();
+                        english::assonant_tail(&phonemes).unwrap_or_default()
+                    });
+                    RhymeKeys { consonant, assonant }
+                })
+                .collect(),
+            None => tokens.iter().map(|_| RhymeKeys { consonant: None, assonant: None }).collect(),
+        }
     }
 
     /// Resolve a batch of surface words in order.

@@ -122,6 +122,35 @@ fn normalise(tail: &[char]) -> String {
     out
 }
 
+/// Compute the Spanish assonant rhyme key: the vowels only from the stressed
+/// vowel to the end of the word, consonants dropped. Returns None only when
+/// there is no stressed vowel. Open-vowel words ("casa", "río") produce a key
+/// because assonant matching does not require a coda consonant.
+pub fn spanish_assonant_key(word: &str) -> Option<String> {
+    let lower = word.to_lowercase();
+    let chars: Vec<char> = lower.chars().collect();
+    if chars.is_empty() {
+        return None;
+    }
+    let idx = stressed_vowel_index(&chars)?;
+
+    // Extract the suffix from the stressed vowel, accent-stripped, then keep
+    // only vowels. Silent u in gu/qu is already absent from stressed_vowel_index
+    // counting — use is_silent_u to exclude it here too.
+    let tail_chars: Vec<char> = chars[idx..].iter().map(|&c| strip_accent(c)).collect();
+    let vowels: String = tail_chars
+        .iter()
+        .enumerate()
+        .filter(|&(i, &c)| is_vowel(c) && !is_silent_u(&tail_chars, i))
+        .map(|(_, &c)| c)
+        .collect();
+
+    if vowels.is_empty() {
+        return None;
+    }
+    Some(vowels)
+}
+
 /// Compute the Spanish rhyme key, or None if the tail has no coda consonant.
 pub fn spanish_rhyme_key(word: &str) -> Option<String> {
     let lower = word.to_lowercase();

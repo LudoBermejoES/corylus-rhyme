@@ -51,6 +51,44 @@ pub fn rhyme_tail(phonemes: &[&str]) -> Option<String> {
     Some(tail.join(" "))
 }
 
+/// Extract the assonant rhyme tail from ARPAbet phonemes: the sequence of vowel
+/// phonemes from the last 1/2-stressed vowel to the end, stress digits stripped,
+/// consonant phonemes dropped. Returns None when there is no stressed vowel.
+/// Open-vowel words ("go" = G OW1) DO produce an assonant key ("OW").
+pub fn assonant_tail(phonemes: &[&str]) -> Option<String> {
+    // Find the last primary- or secondary-stressed vowel (same as rhyme_tail).
+    let mut start: Option<usize> = None;
+    for (i, p) in phonemes.iter().enumerate() {
+        if is_vowel_phoneme(p) {
+            if let Some(d) = stress_digit(p) {
+                if d == '1' || d == '2' {
+                    start = Some(i);
+                }
+            }
+        }
+    }
+    let start = start?;
+    let tail = &phonemes[start..];
+
+    // Keep only vowel phonemes, strip stress digits.
+    let vowels: Vec<String> = tail
+        .iter()
+        .filter(|p| is_vowel_phoneme(p))
+        .map(|p| p.chars().filter(|c| !c.is_ascii_digit()).collect())
+        .collect();
+
+    if vowels.is_empty() {
+        return None;
+    }
+    Some(vowels.join(" "))
+}
+
+/// Convenience wrapper for assonant_tail from a pronunciation string.
+pub fn assonant_tail_from_str(pron: &str) -> Option<String> {
+    let phonemes: Vec<&str> = pron.split_whitespace().collect();
+    assonant_tail(&phonemes)
+}
+
 /// Parse a CMU-dict pronunciation string (space-separated ARPAbet) into a tail.
 /// Convenience wrapper used by the build script's intent and by tests.
 pub fn rhyme_tail_from_str(pron: &str) -> Option<String> {

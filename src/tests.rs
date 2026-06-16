@@ -152,6 +152,96 @@ fn english_batch() {
     ]);
 }
 
+// ── Spanish assonant key ──────────────────────────────────────────────────────
+
+#[test]
+fn spanish_assonant_casa_manana_match() {
+    // Both end in 'a-a' vowel pattern → same assonant key; consonant keys differ.
+    let casa = spanish_assonant_key("casa");
+    let manana = spanish_assonant_key("mañana");
+    assert_eq!(casa, manana);
+    assert!(casa.is_some());
+    // Consonant keys must differ ("asa" vs "ana").
+    assert_ne!(spanish_rhyme_key("casa"), spanish_rhyme_key("mañana"));
+}
+
+#[test]
+fn spanish_assonant_esdrujula_all_vowels() {
+    // pájaro: á is the stressed vowel → tail "ajaro" → vowels "aao"
+    // sábado: á stressed → tail "abado" → vowels "aao"
+    let pajaro = spanish_assonant_key("pájaro");
+    let sabado = spanish_assonant_key("sábado");
+    assert_eq!(pajaro, sabado);
+    assert_eq!(pajaro.as_deref(), Some("aao"));
+}
+
+#[test]
+fn spanish_assonant_open_vowel_has_key() {
+    // "río" ends in open vowel — consonant key is None, assonant key must be Some.
+    assert_eq!(spanish_rhyme_key("río"), None);
+    assert!(spanish_assonant_key("río").is_some());
+    // "camino" (llana) → stressed penult 'i' → tail "ino" → vowels "io"
+    // "sombrío" (aguda stressed í) → tail "ío" → vowels "io" → match
+    let camino = spanish_assonant_key("camino");
+    let sombrio = spanish_assonant_key("sombrío");
+    assert_eq!(camino, sombrio);
+}
+
+#[test]
+fn spanish_assonant_amor_reloj() {
+    // "amor" (aguda, no explicit accent) → stressed 'o' → tail "or" → vowels "o"
+    // "reloj" aguda → stressed 'o' → tail "oj" → vowels "o"
+    let amor = spanish_assonant_key("amor");
+    let reloj = spanish_assonant_key("reloj");
+    assert_eq!(amor, reloj);
+    assert_eq!(amor.as_deref(), Some("o"));
+    // Their consonant keys differ: "or" vs "oj"
+    assert_ne!(spanish_rhyme_key("amor"), spanish_rhyme_key("reloj"));
+}
+
+#[test]
+fn spanish_assonant_jardin_different_from_casa() {
+    // "jardín" → "in"; "casa" → "aa" — different assonant keys
+    assert_ne!(spanish_assonant_key("jardín"), spanish_assonant_key("casa"));
+}
+
+// ── English assonant key ─────────────────────────────────────────────────────
+
+#[test]
+fn english_assonant_election_affection() {
+    // election:    EH1 K SH AH0 N → tail "EH1 K SH AH0 N" → vowels "EH AH"
+    // affection:   AH0 F EH1 K SH AH0 N → tail from EH1 → "EH1 K SH AH0 N" → "EH AH"
+    use crate::english::assonant_tail_from_str;
+    let el = assonant_tail_from_str("IH0 L EH1 K SH AH0 N");
+    let af = assonant_tail_from_str("AH0 F EH1 K SH AH0 N");
+    assert_eq!(el, af);
+    assert_eq!(el.as_deref(), Some("EH AH"));
+}
+
+#[test]
+fn english_assonant_open_vowel() {
+    // "go" G OW1 → no coda → rhyme_tail returns None, but assonant_tail returns "OW"
+    use crate::english::{rhyme_tail_from_str, assonant_tail_from_str};
+    assert_eq!(rhyme_tail_from_str("G OW1"), None);
+    assert_eq!(assonant_tail_from_str("G OW1").as_deref(), Some("OW"));
+}
+
+// ── resolve_batch_both (engine API) ───────────────────────────────────────────
+
+#[test]
+fn resolve_batch_both_spanish() {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = RhymeEngine::new(EngineConfig::default_es(dir.path().to_path_buf()));
+    let results = engine.resolve_batch_both(&["casa".into(), "mañana".into(), "jardín".into()]);
+    assert_eq!(results.len(), 3);
+    // casa and mañana share assonant key but differ in consonant key
+    assert_eq!(results[0].assonant, results[1].assonant);
+    assert_ne!(results[0].consonant, results[1].consonant);
+    // jardín has both consonant and assonant keys
+    assert!(results[2].consonant.is_some());
+    assert!(results[2].assonant.is_some());
+}
+
 // ── Spanish engine via the public API (rule-based, no install) ─────────────────
 
 #[test]
