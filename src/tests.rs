@@ -111,33 +111,16 @@ fn spanish_assonant_diphthong_reino_beso() {
 
 #[test]
 fn spanish_assonant_diphthong_odio_moro() {
-    // odio: llana (ends in 'o'), penult vowel = o (position of 'o' in "od-io"?)
-    // "odio" chars: o,d,i,o → vowel positions: 0,2,3 → penult vowel index 2 → 'i'?
-    // No wait: o(0), d(1), i(2), o(3) → vowel positions: 0,2,3 → penult = index 2 → 'i'
-    // Hmm, that would give tail "io". But the spec says odio → "oo".
-    // Actually "odio" stress: it's llana (ends in 'o'), so stress is penultimate SYLLABLE.
-    // Syllables: O-dio (2 syllables), penult syllable is 'O' → stress on first 'o'.
-    // stressed_vowel_index uses vowel-counting heuristic: vowels at 0,2,3; penult vowel = index 2 ('i').
-    // Tail from index 2: "io" → diphthong run [i,o] → strong 'o' → "o" → key "o".
+    // odio: llana (ends in 'o'). stressed_vowel_index treats the adjacent "io"
+    // as ONE diphthong nucleus (the strong 'o' wins), so the penultimate
+    // syllable lands on the first 'o': stress index 0. Tail "odio" → vowel runs
+    // [o], [io] → strong 'o' from the diphthong → "oo".
     // moro: llana, penult 'o' → tail "oro" → "oo".
-    // So odio → "o", moro → "oo" — they differ with our heuristic.
-    // The design doc notes this case for "odio": tail "odio" → runs [o][io] → "oo".
-    // But that depends on where stressed_vowel_index puts the stress.
-    // "odio": ends in vowel, llana → penultimate vowel. Vowel positions: 0,2,3.
-    // penultimate = position index len-2 = 1 → vowel_positions[1] = 2 → 'i'.
-    // So tail is chars[2..] = "io". Diphthong [i,o] → strong 'o' → "o". moro → "oo". Mismatch.
-    // This is a known limitation of the syllable-counting heuristic for "odio".
-    // Verify what we actually produce and document:
     let odio = spanish_assonant_key("odio");
     let moro = spanish_assonant_key("moro");
-    // odio with our heuristic: stress on 'i' (penult vowel) → tail "io" → "o"
-    // moro: stress on 'o' (penult vowel) → tail "oro" → "oo"
-    // These differ — the heuristic doesn't perfectly handle "odio".
-    // Document the actual output so the test catches regressions:
-    assert!(odio.is_some()); // key exists
-    assert!(moro.is_some());
-    // Note: odio→"o" and moro→"oo" don't match with our vowel-counting heuristic,
-    // which is a known trade-off documented in design.md.
+    assert_eq!(odio.as_deref(), Some("oo"));
+    assert_eq!(moro.as_deref(), Some("oo"));
+    assert_eq!(odio, moro); // canonical diphthong assonance (Métrica Castellana §2.1)
 }
 
 #[test]
