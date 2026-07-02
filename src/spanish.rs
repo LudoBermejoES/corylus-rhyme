@@ -96,7 +96,11 @@ fn stressed_vowel_index(chars: &[char]) -> Option<usize> {
                 let cur_weak = matches!(cur_c, 'i' | 'u');
                 let next_weak = matches!(next_c, 'i' | 'u');
                 if !is_accented(cur_c) && !is_accented(next_c) && (cur_weak || next_weak) {
-                    // Diphthong: nucleus is the strong vowel's index.
+                    // Diphthong: nucleus is the strong vowel's index. The last two
+                    // branches both yield `next_pos` but are semantically distinct
+                    // (next-is-strong vs. both-weak) — kept separate for clarity
+                    // rather than collapsed, even though clippy sees identical arms.
+                    #[allow(clippy::if_same_then_else)]
                     let nucleus = if !cur_weak {
                         cur_pos // cur is strong
                     } else if !next_weak {
